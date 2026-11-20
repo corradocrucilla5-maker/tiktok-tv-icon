@@ -18,16 +18,19 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Create Mini Android TV Project
         run: |
           mkdir -p app/src/main/java/com/custom/tiktoktv
           mkdir -p app/src/main/res/drawable-xhdpi
           mkdir -p app/build/classes
           mkdir -p app/build/dex
-          cp tiktok_PNG3.png app/src/main/res/drawable-xhdpi/banner.png
+
+          IMG_FILE=$(ls *.png *.jpg *.jpeg 2>/dev/null | head -n 1)
+          if [ -n "$IMG_FILE" ]; then
+            convert "$IMG_FILE" -resize 320x180! PNG32:app/src/main/res/drawable-xhdpi/banner.png
+          else
+            convert -size 320x180 xc:black -fill white -gravity center -pointsize 48 -annotate 0 "TikTok" PNG32:app/src/main/res/drawable-xhdpi/banner.png
+          fi
 
           cat << 'EOF' > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
