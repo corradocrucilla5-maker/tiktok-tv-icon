@@ -24,6 +24,7 @@ jobs:
           mkdir -p app/src/main/res/drawable-xhdpi
           mkdir -p app/build/classes
           mkdir -p app/build/dex
+          mkdir -p app/build/res
 
           IMG_FILE=$(ls *.png 2>/dev/null | head -n 1)
           if [ -n "$IMG_FILE" ]; then
@@ -92,10 +93,13 @@ jobs:
           BUILD_TOOLS=$(ls -d $ANDROID_HOME/build-tools/* | tail -n 1)
           PLATFORM=$(ls -d $ANDROID_HOME/platforms/* | tail -n 1)
 
-          $BUILD_TOOLS/aapt package -f -m -J app/src/main/java -M app/src/main/AndroidManifest.xml -S app/src/main/res -I $PLATFORM/android.jar
+          $BUILD_TOOLS/aapt2 compile --dir app/src/main/res -o app/build/res.zip
+          $BUILD_TOOLS/aapt2 link -o app/build/unsigned.apk -I $PLATFORM/android.jar --manifest app/src/main/AndroidManifest.xml --java app/src/main/java app/build/res.zip
+
           javac -source 1.8 -target 1.8 -bootclasspath $PLATFORM/android.jar -d app/build/classes $(find app/src/main/java -name "*.java")
           $BUILD_TOOLS/d8 --output app/build/dex app/build/classes/com/custom/tiktoktv/*.class
-          $BUILD_TOOLS/aapt package -f -M app/src/main/AndroidManifest.xml -S app/src/main/res -I $PLATFORM/android.jar -F app/build/unsigned.apk app/build/dex
+
+          cd app/build/dex && zip -u ../unsigned.apk classes.dex && cd ../../..
           $BUILD_TOOLS/zipalign -f 4 app/build/unsigned.apk app/build/aligned.apk
 
           keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
