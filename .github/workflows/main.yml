@@ -25,14 +25,35 @@ jobs:
           mkdir -p app/build/classes
           mkdir -p app/build/dex
 
+          python3 -c '
+          import struct, zlib, glob
+
+          def make_banner():
+              w, h = 320, 180
+              # Sfondo nero elegante 320x180
+              raw = b"".join(b"\x00" + b"\x12\x12\x12\xff" * w for _ in range(h))
+              def chunk(tag, data):
+                  return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xffffffff)
+              png = b"\x89PNG\r\n\x1a\n"
+              png += chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
+              png += chunk(b"IDAT", zlib.compress(raw))
+              png += chunk(b"IEND", b"")
+              with open("app/src/main/res/drawable-xhdpi/banner_bg.png", "wb") as f:
+                  f.write(png)
+
+          make_banner()
+          '
+
           IMG_FILE=$(ls *.png 2>/dev/null | head -n 1)
           if [ -n "$IMG_FILE" ]; then
-            cp "$IMG_FILE" app/src/main/res/drawable-xhdpi/banner.png
+            cp "$IMG_FILE" app/src/main/res/drawable-xhdpi/logo.png
           else
-            echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" | base64 -d > app/src/main/res/drawable-xhdpi/banner.png
+            cp app/src/main/res/drawable-xhdpi/banner_bg.png app/src/main/res/drawable-xhdpi/logo.png
           fi
 
-          echo "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPG1hbmlmZXN0IHhtbG5zOmFuZHJvaWQ9Imh0dHA6Ly9zY2hlbWFzLmFuZHJvaWQuY29tL2Fway9yZXMvYW5kcm9pZCIKICAgIHBhY2thZ2U9ImNvbS5jdXN0b20udGlrdG9rdHYiCiAgICBhbmRyb2lkOnZlcnNpb25Db2RlPSIxIgogICAgYW5kcm9pZDp2ZXJzaW9uTmFtZT0iMS4wIj4KICAgIDx1c2VzLXNkayBhbmRyb2lkOm1pblNka1ZlcnNpb249IjIxIiBhbmRyb2lkOnRhcmdldFNka1ZlcnNpb249IjMzIiAvPgogICAgPHVzZXMtZmVhdHVyZSBhbmRyb2lkOm5hbWU9ImFuZHJvaWQuc29mdHdhcmUubGVhbmJhY2siIGFuZHJvaWQ6cmVxdWlyZWQ9ImZhbHNlIiAvPgogICAgPHVzZXMtZmVhdHVyZSBhbmRyb2lkOm5hbWU9ImFuZHJvaWQuaGFyZHdhcmUudG91Y2hzY3JlZW4iIGFuZHJvaWQ6cmVxdWlyZWQ9ImZhbHNlIiAvPgogICAgPGFwcGxpY2F0aW9uCiAgICAgICAgYW5kcm9pZDpsYWJlbD0iVGlrVG9rIgogICAgICAgIGFuZHJvaWQ6YmFubmVyPSJAZHJhd2FibGUvYmFubmVyIgogICAgICAgIGFuZHJvaWQ6aWNvbj0iQGRyYXdhYmxlL2Jhbm5lciI+CiAgICAgICAgPGFjdGl2aXR5CiAgICAgICAgICAgIGFuZHJvaWQ6bmFtZT0iLkxhdW5jaEFjdGl2aXR5IgogICAgICAgICAgICBhbmRyb2lkOmV4cG9ydGVkPSJ0cnVlIgogICAgICAgICAgICBhbmRyb2lkOnRoZW1lPSJAYW5kcm9pZDpzdHlsZS9UaGVtZS5Ob0Rpc3BsYXkiPgogICAgICAgICAgICA8aW50ZW50LWZpbHRlcj4KICAgICAgICAgICAgICAgIDxhY3Rpb24gYW5kcm9pZDpuYW1lPSJhbmRyb2lkLmludGVudC5hY3Rpb24uTUFJTiIgLz4KICAgICAgICAgICAgICAgIDxjYXRlZ29yeSBhbmRyb2lkOm5hbWU9ImFuZHJvaWQuaW50ZW50LmNhdGVnb3J5LkxFQU5CQUNLX0xBVU5DSEVSIiAvPgogICAgICAgICAgICAgICAgPGNhdGVnb3J5IGFuZHJvaWQ6bmFtZT0iYW5kcm9pZC5pbnRlbnQuY2F0ZWdvcnkuTEFVTkNIRVIiIC8+CiAgICAgICAgICAgIDwvaW50ZW50LWZpbHRlcj4KICAgICAgICA8L2FjdGl2aXR5PgogICAgPC9hcHBsaWNhdGlvbj4KPC9tYW5pZmVzdD4K" | base64 -d > app/src/main/AndroidManifest.xml
+          echo "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPGxheWVyLWxpc3QgeG1sbnM6YW5kcm9pZD0iaHR0cDovL3NjaGVtYXMuYW5kcm9pZC5jb20vYXBrL3Jlcy9hbmRyb2lkIj4KICAgIDxpdGVtIGFuZHJvaWQ6ZHJhd2FibGU9IkBkcmF3YWJsZS9iYW5uZXJfYmciIC8+CiAgICA8aXRlbSBhbmRyb2lkOmdyYXZpdHk9ImNlbnRlciIgYW5kcm9pZDp3aWR0aD0iMTEwZHAiIGFuZHJvaWQ6aGVpZ2h0PSIxMTBkcCI+CiAgICAgICAgPGJpdG1hcCBhbmRyb2lkOnNyYz0iQGRyYXdhYmxlL2xvZ28iIGFuZHJvaWQ6Z3Jhdml0eT0iY2VudGVyIiAvPgogICAgPC9pdGVtPgo8L2xheWVyLWxpc3Q+Cg==" | base64 -d > app/src/main/res/drawable-xhdpi/banner.xml
+
+          echo "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPG1hbmlmZXN0IHhtbG5zOmFuZHJvaWQ9Imh0dHA6Ly9zY2hlbWFzLmFuZHJvaWQuY29tL2Fway9yZXMvYW5kcm9pZCIKICAgIHBhY2thZ2U9ImNvbS5jdXN0b20udGlrdG9rdHYiCiAgICBhbmRyb2lkOnZlcnNpb25Db2RlPSIyIgogICAgYW5kcm9pZDp2ZXJzaW9uTmFtZT0iMi4wIj4KICAgIDx1c2VzLXNkayBhbmRyb2lkOm1pblNka1ZlcnNpb249IjIxIiBhbmRyb2lkOnRhcmdldFNka1ZlcnNpb249IjMzIiAvPgogICAgPHVzZXMtZmVhdHVyZSBhbmRyb2lkOm5hbWU9ImFuZHJvaWQuc29mdHdhcmUubGVhbmJhY2siIGFuZHJvaWQ6cmVxdWlyZWQ9ImZhbHNlIiAvPgogICAgPHVzZXMtZmVhdHVyZSBhbmRyb2lkOm5hbWU9ImFuZHJvaWQuaGFyZHdhcmUudG91Y2hzY3JlZW4iIGFuZHJvaWQ6cmVxdWlyZWQ9ImZhbHNlIiAvPgogICAgPGFwcGxpY2F0aW9uCiAgICAgICAgYW5kcm9pZDpsYWJlbD0iVGlrVG9rIgogICAgICAgIGFuZHJvaWQ6YmFubmVyPSJAZHJhd2FibGUvYmFubmVyIgogICAgICAgIGFuZHJvaWQ6aWNvbj0iQGRyYXdhYmxlL2xvZ28iPgogICAgICAgIDxhY3Rpdml0eQogICAgICAgICAgICBhbmRyb2lkOm5hbWU9Ii5MYXVuY2hBY3Rpdml0eSIKICAgICAgICAgICAgYW5kcm9pZDpleHBvcnRlZD0idHJ1ZSIKICAgICAgICAgICAgYW5kcm9pZDp0aGVtZT0iQGFuZHJvaWQ6c3R5bGUvVGhlbWUuTm9EaXNwbGF5Ij4KICAgICAgICAgICAgPGludGVudC1maWx0ZXI+CiAgICAgICAgICAgICAgICA8YWN0aW9uIGFuZHJvaWQ6bmFtZT0iYW5kcm9pZC5pbnRlbnQuYWN0aW9uLk1BSU4iIC8+CiAgICAgICAgICAgICAgICA8Y2F0ZWdvcnkgYW5kcm9pZDpuYW1lPSJhbmRyb2lkLmludGVudC5jYXRlZ29yeS5MRUFOQkFDS19MQVVOQ0hFUiIgLz4KICAgICAgICAgICAgICAgIDxjYXRlZ29yeSBhbmRyb2lkOm5hbWU9ImFuZHJvaWQuaW50ZW50LmNhdGVnb3J5LkxBVU5DSEVSIiAvPgogICAgICAgICAgICA8L2ludGVudC1maWx0ZXI+CiAgICAgICAgPC9hY3Rpdml0eT4KICAgIDwvYXBwbGljYXRpb24+CjwvbWFuaWZlc3Q+Cg==" | base64 -d > app/src/main/AndroidManifest.xml
 
           cat << 'EOF' > app/src/main/java/com/custom/tiktoktv/LaunchActivity.java
           package com.custom.tiktoktv;
