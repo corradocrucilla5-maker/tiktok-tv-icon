@@ -32,35 +32,7 @@ jobs:
             echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" | base64 -d > app/src/main/res/drawable-xhdpi/banner.png
           fi
 
-          python3 -c '
-          a = "android:"
-          manifest = f"""<?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://android.com"
-              package="com.custom.tiktoktv"
-              {a}versionCode="1"
-              {a}versionName="1.0">
-              <uses-sdk {a}minSdkVersion="21" {a}targetSdkVersion="33" />
-              <uses-feature {a}name="android.software.leanback" {a}required="false" />
-              <uses-feature {a}name="android.hardware.touchscreen" {a}required="false" />
-              <application
-                  {a}label="TikTok"
-                  {a}banner="@drawable/banner"
-                  {a}icon="@drawable/banner">
-                  <activity
-                      {a}name=".LaunchActivity"
-                      {a}exported="true"
-                      {a}theme="@android:style/Theme.NoDisplay">
-                      <intent-filter>
-                          <action {a}name="android.intent.action.MAIN" />
-                          <category {a}name="android.intent.category.LEANBACK_LAUNCHER" />
-                          <category {a}name="android.intent.category.LAUNCHER" />
-                      </intent-filter>
-                  </activity>
-              </application>
-          </manifest>"""
-          with open("app/src/main/AndroidManifest.xml", "w") as f:
-              f.write(manifest)
-          '
+          echo "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPG1hbmlmZXN0IHhtbG5zOmFuZHJvaWQ9Imh0dHA6Ly9zY2hlbWFzLmFuZHJvaWQuY29tL2Fway9yZXMvYW5kcm9pZCIKICAgIHBhY2thZ2U9ImNvbS5jdXN0b20udGlrdG9rdHYiCiAgICBhbmRyb2lkOnZlcnNpb25Db2RlPSIxIgogICAgYW5kcm9pZDp2ZXJzaW9uTmFtZT0iMS4wIj4KICAgIDx1c2VzLXNkayBhbmRyb2lkOm1pblNka1ZlcnNpb249IjIxIiBhbmRyb2lkOnRhcmdldFNka1ZlcnNpb249IjMzIiAvPgogICAgPHVzZXMtZmVhdHVyZSBhbmRyb2lkOm5hbWU9ImFuZHJvaWQuc29mdHdhcmUubGVhbmJhY2siIGFuZHJvaWQ6cmVxdWlyZWQ9ImZhbHNlIiAvPgogICAgPHVzZXMtZmVhdHVyZSBhbmRyb2lkOm5hbWU9ImFuZHJvaWQuaGFyZHdhcmUudG91Y2hzY3JlZW4iIGFuZHJvaWQ6cmVxdWlyZWQ9ImZhbHNlIiAvPgogICAgPGFwcGxpY2F0aW9uCiAgICAgICAgYW5kcm9pZDpsYWJlbD0iVGlrVG9rIgogICAgICAgIGFuZHJvaWQ6YmFubmVyPSJAZHJhd2FibGUvYmFubmVyIgogICAgICAgIGFuZHJvaWQ6aWNvbj0iQGRyYXdhYmxlL2Jhbm5lciI+CiAgICAgICAgPGFjdGl2aXR5CiAgICAgICAgICAgIGFuZHJvaWQ6bmFtZT0iLkxhdW5jaEFjdGl2aXR5IgogICAgICAgICAgICBhbmRyb2lkOmV4cG9ydGVkPSJ0cnVlIgogICAgICAgICAgICBhbmRyb2lkOnRoZW1lPSJAYW5kcm9pZDpzdHlsZS9UaGVtZS5Ob0Rpc3BsYXkiPgogICAgICAgICAgICA8aW50ZW50LWZpbHRlcj4KICAgICAgICAgICAgICAgIDxhY3Rpb24gYW5kcm9pZDpuYW1lPSJhbmRyb2lkLmludGVudC5hY3Rpb24uTUFJTiIgLz4KICAgICAgICAgICAgICAgIDxjYXRlZ29yeSBhbmRyb2lkOm5hbWU9ImFuZHJvaWQuaW50ZW50LmNhdGVnb3J5LkxFQU5CQUNLX0xBVU5DSEVSIiAvPgogICAgICAgICAgICAgICAgPGNhdGVnb3J5IGFuZHJvaWQ6bmFtZT0iYW5kcm9pZC5pbnRlbnQuY2F0ZWdvcnkuTEFVTkNIRVIiIC8+CiAgICAgICAgICAgIDwvaW50ZW50LWZpbHRlcj4KICAgICAgICA8L2FjdGl2aXR5PgogICAgPC9hcHBsaWNhdGlvbj4KPC9tYW5pZmVzdD4K" | base64 -d > app/src/main/AndroidManifest.xml
 
           cat << 'EOF' > app/src/main/java/com/custom/tiktoktv/LaunchActivity.java
           package com.custom.tiktoktv;
