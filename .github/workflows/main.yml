@@ -24,7 +24,6 @@ jobs:
           mkdir -p app/src/main/res/drawable-xhdpi
           mkdir -p app/build/classes
           mkdir -p app/build/dex
-          mkdir -p app/build/res
 
           IMG_FILE=$(ls *.png 2>/dev/null | head -n 1)
           if [ -n "$IMG_FILE" ]; then
@@ -33,34 +32,35 @@ jobs:
             echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" | base64 -d > app/src/main/res/drawable-xhdpi/banner.png
           fi
 
-          cat << 'EOF' > app/src/main/AndroidManifest.xml
-          <?xml version="1.0" encoding="utf-8"?>
+          python3 -c '
+          a = "android:"
+          manifest = f"""<?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://android.com"
               package="com.custom.tiktoktv"
-              android:versionCode="1"
-              android:versionName="1.0">
-
-              <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="33" />
-              <uses-feature android:name="android.software.leanback" android:required="false" />
-              <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
-
+              {a}versionCode="1"
+              {a}versionName="1.0">
+              <uses-sdk {a}minSdkVersion="21" {a}targetSdkVersion="33" />
+              <uses-feature {a}name="android.software.leanback" {a}required="false" />
+              <uses-feature {a}name="android.hardware.touchscreen" {a}required="false" />
               <application
-                  android:label="TikTok"
-                  android:banner="@drawable/banner"
-                  android:icon="@drawable/banner">
+                  {a}label="TikTok"
+                  {a}banner="@drawable/banner"
+                  {a}icon="@drawable/banner">
                   <activity
-                      android:name=".LaunchActivity"
-                      android:exported="true"
-                      android:theme="@android:style/Theme.NoDisplay">
+                      {a}name=".LaunchActivity"
+                      {a}exported="true"
+                      {a}theme="@android:style/Theme.NoDisplay">
                       <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-                          <category android:name="android.intent.category.LAUNCHER" />
+                          <action {a}name="android.intent.action.MAIN" />
+                          <category {a}name="android.intent.category.LEANBACK_LAUNCHER" />
+                          <category {a}name="android.intent.category.LAUNCHER" />
                       </intent-filter>
                   </activity>
               </application>
-          </manifest>
-          EOF
+          </manifest>"""
+          with open("app/src/main/AndroidManifest.xml", "w") as f:
+              f.write(manifest)
+          '
 
           cat << 'EOF' > app/src/main/java/com/custom/tiktoktv/LaunchActivity.java
           package com.custom.tiktoktv;
