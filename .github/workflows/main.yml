@@ -25,12 +25,25 @@ jobs:
           mkdir -p app/build/classes
           mkdir -p app/build/dex
 
-          IMG_FILE=$(ls *.png *.jpg *.jpeg 2>/dev/null | head -n 1)
-          if [ -n "$IMG_FILE" ]; then
-            convert "$IMG_FILE" -resize 320x180! PNG32:app/src/main/res/drawable-xhdpi/banner.png
-          else
-            convert -size 320x180 xc:black -fill white -gravity center -pointsize 48 -annotate 0 "TikTok" PNG32:app/src/main/res/drawable-xhdpi/banner.png
-          fi
+          python3 -c '
+          import glob
+          try:
+              from PIL import Image
+          except ImportError:
+              import subprocess, sys
+              subprocess.check_call([sys.executable, "-m", "pip", "install", "Pillow", "-q"])
+              from PIL import Image
+
+          files = glob.glob("*.png") + glob.glob("*.jpg") + glob.glob("*.jpeg")
+          bg = Image.new("RGBA", (320, 180), (0, 0, 0, 255))
+          if files:
+              img = Image.open(files[0]).convert("RGBA")
+              img.thumbnail((280, 150))
+              x = (320 - img.width) // 2
+              y = (180 - img.height) // 2
+              bg.paste(img, (x, y), img)
+          bg.save("app/src/main/res/drawable-xhdpi/banner.png", "PNG")
+          '
 
           cat << 'EOF' > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
