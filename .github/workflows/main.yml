@@ -1,4 +1,4 @@
-name: Build TikTok TV Shortcut
+name: Patch TikTok Lite for Android TV
 
 on:
   workflow_dispatch:
@@ -6,117 +6,53 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build:
+  patch:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Create Mini Android TV Project
+      - name: Download APK and Apktool
         run: |
-          mkdir -p app/src/main/java/com/custom/tiktoktv49
-          mkdir -p app/src/main/res/drawable-xhdpi
-          mkdir -p app/build/classes
-          mkdir -p app/build/dex
+          APK_URL="https://google.com"
+          
+          if [[ "$APK_URL" == *"://google.com"* ]]; then
+            FILE_ID=$(echo "$APK_URL" | sed -n 's/.*\/d\/\([^\/]*\).*/\1/p')
+            [ -z "$FILE_ID" ] && FILE_ID=$(echo "$APK_URL" | sed -n 's/.*id=\([^&]*\).*/\1/p')
+            pip install gdown --break-system-packages -q
+            gdown "$FILE_ID" -O tiktok_orig.apk
+          else
+            DIRECT_URL=$(echo "$APK_URL" | sed 's/dl=0/dl=1/g')
+            curl -L "$DIRECT_URL" -o tiktok_orig.apk
+          fi
 
-          python3 -c '
-          import struct, zlib
+          wget -q https://bitbucket.org -O apktool.jar
 
-          w, h = 320, 180
-          cx, cy = w // 2, h // 2
-          grid = [[0]*w for _ in range(h)]
-
-          for y in range(h):
-              for x in range(w):
-                  dx, dy = x - cx, y - cy
-                  # Nota musicale piccola e ben centrata (circa 44x56 px totali)
-                  dist = ((dx + 7)**2 + (dy - 12)**2)**0.5
-                  in_ring = (8 <= dist <= 16) and not (dx > -7 and dy < 12)
-                  in_stem = (1 <= dx <= 9) and (-28 <= dy <= 12)
-                  in_flag = (9 <= dx <= 24) and (-28 <= dy <= -20) and ((dx - 9) + (dy + 28) <= 16)
-                  if in_ring or in_stem or in_flag:
-                      grid[y][x] = 1
-
-          raw = bytearray()
-          for y in range(h):
-              raw.append(0)
-              for x in range(w):
-                  m = grid[y][x]
-                  c = grid[min(h-1, y+2)][min(w-1, x+2)]
-                  r = grid[max(0, y-2)][max(0, x-2)]
-                  if m:
-                      raw.extend(b"\xff\xff\xff\xff")
-                  elif c:
-                      raw.extend(b"\x25\xf4\xee\xff")
-                  elif r:
-                      raw.extend(b"\xfe\x2c\x55\xff")
-                  else:
-                      raw.extend(b"\x14\x14\x14\xff")
-
-          def chunk(tag, data):
-              return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xffffffff)
-
-          png = b"\x89PNG\r\n\x1a\n"
-          png += chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
-          png += chunk(b"IDAT", zlib.compress(bytes(raw)))
-          png += chunk(b"IEND", b"")
-          with open("app/src/main/res/drawable-xhdpi/banner.png", "wb") as f:
-              f.write(png)
-          '
-
-          echo "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPG1hbmlmZXN0IHhtbG5zOmFuZHJvaWQ9Imh0dHA6Ly9zY2hlbWFzLmFuZHJvaWQuY29tL2Fway9yZXMvYW5kcm9pZCIKICAgIHBhY2thZ2U9ImNvbS5jdXN0b20udGlrdG9rdHY0OSIKICAgIGFuZHJvaWQ6dmVyc2lvbkNvZGU9IjEiCiAgICBhbmRyb2lkOnZlcnNpb25OYW1lPSIxLjAiPgogICAgPHVzZXMtc2RrIGFuZHJvaWQ6bWluU2RrVmVyc2lvbj0iMjEiIGFuZHJvaWQ6dGFyZ2V0U2RrVmVyc2lvbj0iMzMiIC8+CiAgICA8dXNlcy1mZWF0dXJlIGFuZHJvaWQ6bmFtZT0iYW5kcm9pZC5zb2Z0d2FyZS5sZWFuYmFjayIgYW5kcm9pZDpyZXF1aXJlZD0iZmFsc2UiIC8+CiAgICA8dXNlcy1mZWF0dXJlIGFuZHJvaWQ6bmFtZT0iYW5kcm9pZC5oYXJkd2FyZS50b3VjaHNjcmVlbiIgYW5kcm9pZDpyZXF1aXJlZD0iZmFsc2UiIC8+CiAgICA8YXBwbGljYXRpb24KICAgICAgICBhbmRyb2lkOmxhYmVsPSJUaWtUb2siCiAgICAgICAgYW5kcm9pZDpiYW5uZXI9IkBkcmF3YWJsZS9iYW5uZXIiCiAgICAgICAgYW5kcm9pZDppY29uPSJAZHJhd2FibGUvYmFubmVyIj4KICAgICAgICA8YWN0aXZpdHkKICAgICAgICAgICAgYW5kcm9pZDpuYW1lPSIuTGF1bmNoQWN0aXZpdHkiCiAgICAgICAgICAgIGFuZHJvaWQ6ZXhwb3J0ZWQ9InRydWUiCiAgICAgICAgICAgIGFuZHJvaWQ6dGhlbWU9IkBhbmRyb2lkOnN0eWxlL1RoZW1lLk5vRGlzcGxheSI+CiAgICAgICAgICAgIDxpbnRlbnQtZmlsdGVyPgogICAgICAgICAgICAgICAgPGFjdGlvbiBhbmRyb2lkOm5hbWU9ImFuZHJvaWQuaW50ZW50LmNhdGVnb3J5LkxFQU5CQUNLX0xBVU5DSEVSIiAvPgogICAgICAgICAgICAgICAgPGNhdGVnb3J5IGFuZHJvaWQ6bmFtZT0iYW5kcm9pZC5pbnRlbnQuY2F0ZWdvcnkuTEVBTkJBQ0tfTEFVTkNIRVIiIC8+CiAgICAgICAgICAgICAgICA8Y2F0ZWdvcnkgYW5kcm9pZDpuYW1lPSJhbmRyb2lkLmludGVudC5jYXRlZ29yeS5MQVVOQ0hFUiIgLz4KICAgICAgICAgICAgPC9pbnRlbnQtZmlsdGVyPgogICAgICAgIDwvYWN0aXZpdHk+CiAgICA8L2FwcGxpY2F0aW9uPgo8L21hbmlmZXN0Pgo=" | base64 -d > app/src/main/AndroidManifest.xml
-
-          cat << 'EOF' > app/src/main/java/com/custom/tiktoktv49/LaunchActivity.java
-          package com.custom.tiktoktv49;
-
-          import android.app.Activity;
-          import android.content.Intent;
-          import android.os.Bundle;
-          import android.widget.Toast;
-
-          public class LaunchActivity extends Activity {
-              @Override
-              protected void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
-                  Intent launchIntent = getPackageManager().getLaunchIntentForPackage("com.zhiliaoapp.musically.go");
-                  if (launchIntent == null) {
-                      launchIntent = getPackageManager().getLaunchIntentForPackage("com.zhiliaoapp.musically");
-                  }
-                  if (launchIntent != null) {
-                      startActivity(launchIntent);
-                  } else {
-                      Toast.makeText(this, "TikTok non trovato sulla TV", Toast.LENGTH_SHORT).show();
-                  }
-                  finish();
-              }
-          }
-          EOF
-
-      - name: Compile and Sign APK
+      - name: Decompile, Add TV Banner & Rename to TikTok
         run: |
+          java -jar apktool.jar d -s tiktok_orig.apk -o tiktok_decompiled
+
+          mkdir -p tiktok_decompiled/res/drawable-xhdpi
+          echo "aW1wb3J0IHN0cnVjdCwgemxpYgoKdywgaCA9IDMyMCwgMTgwCmN4LCBjeSA9IHcgLy8gMiwgaCAvLyAyCmdyaWQgPSBbWzBdICogdyBmb3IgXyBpbiByYW5nZShoKV0KCmZvciB5IGluIHJhbmdlKGgpOgogICAgZm9yIHggaW4gcmFuZ2Uodyk6CiAgICAgICAgZHgsIGR5ID0geCAtIGN4LCB5IC0gY3kKICAgICAgICBkaXN0ID0gKChkeCArIDcpKioyICsgKGR5IC0gMTIpKioyKSoqMC41CiAgICAgICAgaW5fcmluZyA9ICg4IDw9IGRpc3QgPD0gMTYpIGFuZCBub3QgKGR4ID4gLTcgYW5kIGR5IDwgMTIpCiAgICAgICAgaW5fc3RlbSA9ICgxIDw9IGR4IDw9IDkpIGFuZCAoLTI4IDw9IGR5IDw9IDEyKQogICAgICAgIGluX2ZsYWcgPSAoOSA8PSBkeCA8PSAyNCkgYW5kICgtMjggPD0gZHkgPD0gLTIwKSBhbmQgKChkeCAtIDkpICsgKGR5ICsgMjgpIDw9IDE2KQogICAgICAgIGlmIGluX3Jpbmcgb3IgaW5fc3RlbSBvciBpbl9mbGFnOgogICAgICAgICAgICBncmlkW3ldW3hdID0gMQoKcmF3ID0gYnl0ZWFycmF5KCkKZm9yIHkgaW4gcmFuZ2UoaCk6CiAgICByYXcuYXBwZW5kKDApCiAgICBmb3IgeCBpbiByYW5nZSh3KToKICAgICAgICBtID0gZ3JpZFt5XVt4XQogICAgICAgIGMgPSBncmlkW21pbihoLTEsIHkrMildW21pbih3LTEsIHgrMildCiAgICAgICAgciA9IGdyaWRbbWF4KDAsIHktMildW21heCgwLCB4LTIpXQogICAgICAgIGlmIG06CiAgICAgICAgICAgIHJhdy5leHRlbmQoYlx4ZmZceGZmXHhmZlx4ZmYiKQogICAgICAgIGVsaWYgYzoKICAgICAgICAgICAgcmF3LmV4dGVuZChiXHgyNVx4ZjRceGVlXHhmZiIpCiAgICAgICAgZWxpZiByOgogICAgICAgICAgICByYXcuZXh0ZW5kKGJceGZlXHgyY1x4NTVceGZmIikKICAgICAgICBlbHNlOgogICAgICAgICAgICByYXcuZXh0ZW5kKGJceDE0XHgxNFx4MTRceGZmIikKCmRlZiBjaHVuayh0YWcsIGRhdGEpOgogICAgcmV0dXJuIHN0cnVjdC5wYWNrKCI+SSIsIGxlbihkYXRhKSkgKyB0YWcgKyBkYXRhICsgc3RydWN0LnBhY2soIj5JIiwgemxpYi5jcmMzMih0YWcgKyBkYXRhKSAmIDB4ZmZmZmZmZmYpCgpwbmcgPSBiIlx4ODlQTkdcclxuXHgxYVxuIgpwbmcgKz0gY2h1bmsoYklIRFIiLCBzdHJ1Y3QucGFjaygiPklJQkJCQkIiLCB3LCBoLCA4LCA2LCAwLCAwLCAwKSkKcG5nICs9IGNodW5rKGJJREFUIiwgemxpYi5jb21wcmVzcyhieXRlcyhyYXcpKSkKcG5nICs9IGNodW5rKGJJRU5EIiwgYiIiKQp3aXRoIG9wZW4oInRpa3Rva19kZWNvbXBpbGVkL3Jlcy9kcmF3YWJsZS14aGRwaS90dl9iYW5uZXIucG5nIiwgIndiIikgYXMgZjoKICAgIGYud3JpdGUocG5nKQo=" | base64 -d > make_banner.py
+          python3 make_banner.py
+
+          echo "aW1wb3J0IHJlCgp3aXRoIG9wZW4oInRpa3Rva19kZWNvbXBpbGVkL0FuZHJvaWRNYW5pZmVzdC54bWwiLCAiciIsIGVuY29kaW5nPSJ1dGYtOCIpIGFzIGY6CiAgICB4bWwgPSBmLnJlYWQoKQoKIyBSaW5vbWluYSBsJ2FwcCBpbiBUaWtUb2sKeG1sID0gcmUuc3ViKHInYW5kcm9pZDpsYWJlbD0iW14iXSoiJywgJ2FuZHJvaWQ6bGFiZWw9IlRpa1RvayInLCB4bWwpCgojIEFnaWluZ2kgYmFubmVyIFRWIGFsbCdhcHBsaWNhemlvbmUKaWYgJ2FuZHJvaWQ6YmFubmVyPScgbm90IGluIHhtbDoKICAgIHhtbCA9IHhtbC5yZXBsYWNlKCc8YXBwbGljYXRpb24gJywgJzx hcHBsaWNhdGlvbiBhbmRyb2lkOmJhbm5lcj0iQGRyYXdhYmxlL3R2X2Jhbm5lciIgJywgMSkKCnhtbCA9IHhtbC5yZXBsYWNlKCc8IGFwcGxpY2F0aW9uJywgJzxhcHBsaWNhdGlvbicpCgojIEFnaWluZ2kgY2F0ZWdvcmlhIExFQU5CQUNLX0xBVU5DSEVSIHBlciBmYXJsYSBhcHBhcmlpcnUgbmVsbGEgSG9tZSBkZWxsYSBUVgppZiAnTEVBTkJBQ0tfTEFVTkNIRVInIG5vdCBpbiB4bWw6CiAgICB4bWwgPSB4bWwucmVwbGFjZSgnPGNhbdGVnb3J5IGFuZHJvaWQ6bmFtZT0iYW5kcm9pZC5pbnRlbnQuY2F0ZWdvcnkuTEFVTkNIRVIiIC8+JywKICAgICAgICAgICAgICAgICAgICAnPGNhbdGVnb3J5IGFuZHJvaWQ6bmFtZT0iYW5kcm9pZC5pbnRlbnQuY2F0ZWdvcnkuTEFVTkNIRVIiIC8+XG4gICAgICAgICAgICAgICAgPGNhbdGVnb3J5IGFuZHJvaWQ6bmFtZT0iYW5kcm9pZC5pbnRlbnQuY2F0ZWdvcnkuTEVBTkJBQ0tfTEFVTkNIRVIiIC8+JykKCnhtbCA9IHhtbC5yZXBsYWNlKCc8Y2FiZGVnb3J5JywgJzxjYXRlZ29yeScpCgp3aXRoIG9wZW4oInRpa3Rva19kZWNvbXBpbGVkL0FuZHJvaWRNYW5pZmVzdC54bWwiLCAidyIsIGVuY29kaW5nPSJ1dGYtOCIpIGFzIGY6CiAgICBmLndyaXRlKHhtbCkK" | base64 -d > patch_manifest.py
+          python3 patch_manifest.py
+
+      - name: Rebuild and Sign Patched APK
+        run: |
+          java -jar apktool.jar b tiktok_decompiled -o tiktok_unsigned.apk
           BUILD_TOOLS=$(ls -d $ANDROID_HOME/build-tools/* | tail -n 1)
-          PLATFORM=$(ls -d $ANDROID_HOME/platforms/* | tail -n 1)
-
-          $BUILD_TOOLS/aapt2 compile --dir app/src/main/res -o app/build/res.zip
-          $BUILD_TOOLS/aapt2 link -o app/build/unsigned.apk -I $PLATFORM/android.jar --manifest app/src/main/AndroidManifest.xml --java app/src/main/java app/build/res.zip
-
-          javac -source 1.8 -target 1.8 -bootclasspath $PLATFORM/android.jar -d app/build/classes $(find app/src/main/java -name "*.java")
-          $BUILD_TOOLS/d8 --output app/build/dex app/build/classes/com/custom/tiktoktv49/*.class
-
-          cd app/build/dex && zip -u ../unsigned.apk classes.dex && cd ../../..
-          $BUILD_TOOLS/zipalign -f 4 app/build/unsigned.apk app/build/aligned.apk
+          $BUILD_TOOLS/zipalign -f 4 tiktok_unsigned.apk tiktok_aligned.apk
 
           keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          $BUILD_TOOLS/apksigner sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android --out TikTok-TV-Shortcut.apk app/build/aligned.apk
+          $BUILD_TOOLS/apksigner sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android --out TikTok-TV-Patched.apk tiktok_aligned.apk
 
-      - name: Upload APK
+      - name: Upload Patched APK
         uses: actions/upload-artifact@v4
         with:
-          name: TikTok-TV-Shortcut
-          path: TikTok-TV-Shortcut.apk
+          name: TikTok-TV-Patched
+          path: TikTok-TV-Patched.apk
