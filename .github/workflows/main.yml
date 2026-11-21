@@ -17,18 +17,9 @@ jobs:
 
       - name: Download APK and Apktool
         run: |
-          APK_URL="https://google.com"
-          
-          if [[ "$APK_URL" == *"://google.com"* ]]; then
-            FILE_ID=$(echo "$APK_URL" | sed -n 's/.*\/d\/\([^\/]*\).*/\1/p')
-            [ -z "$FILE_ID" ] && FILE_ID=$(echo "$APK_URL" | sed -n 's/.*id=\([^&]*\).*/\1/p')
-            pip install gdown --break-system-packages -q
-            gdown "$FILE_ID" -O tiktok_orig.apk
-          else
-            DIRECT_URL=$(echo "$APK_URL" | sed 's/dl=0/dl=1/g')
-            curl -L "$DIRECT_URL" -o tiktok_orig.apk
-          fi
-
+          FILE_ID=$(echo "MXVxclkxdXlIOWZ1QjVyU24ybVc1dVhXVGNoVlR1Z19h" | base64 -d)
+          pip install gdown --break-system-packages -q
+          gdown "$FILE_ID" -O tiktok_orig.apk
           wget -q https://bitbucket.org -O apktool.jar
 
       - name: Decompile, Add TV Banner & Rename to TikTok
