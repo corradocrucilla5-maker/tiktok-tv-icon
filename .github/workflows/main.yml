@@ -17,55 +17,68 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Download APK from GitHub Release & Apktool
+      - name: Download APK from GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release download v1.0 -R ${{ github.repository }} -p "*.apk" -O tiktok_orig.apk
-          APKTOOL_URL=$(echo "aHR0cHM6Ly9naXRodWIuY29tL2lCb3RQZWFjaGVzL0Fwa3Rvb2wvcmVsZWFzZXMvZG93bmxvYWQvdjIuMTAuMC9hcGt0b29sXzIuMTAuMC5qYXI=" | base64 -d)
-          curl -fL "$APKTOOL_URL" -o apktool.jar
 
-      - name: Decompile Manifest, Add TV Banner & Rename to TikTok
+      - name: Patch Binary AndroidManifest Directly
         run: |
-          java -jar apktool.jar d -s -f --keep-broken-res tiktok_orig.apk -o tiktok_decompiled
+          pip install apkutils2 --break-system-packages -q || true
+          git clone --depth 1 https://github.com /tmp/axml || true
 
           python3 - << 'EOF'
-          import re
+          import zipfile, shutil, os
 
-          p = "tiktok_decompiled/AndroidManifest.xml"
-          with open(p, "r", encoding="utf-8") as f:
-              xml = f.read()
+          # Estrai l'APK
+          os.makedirs("apk_work", exist_ok=True)
+          with zipfile.ZipFile("tiktok_orig.apk", "r") as zin:
+              zin.extractall("apk_work")
 
-          a = "android:"
-          n = "n" + "ame"
+          # Rinomina l'app direttamente nel file binario AndroidManifest.xml (UTF-16LE string pool)
+          manifest_path = "apk_work/AndroidManifest.xml"
+          with open(manifest_path, "rb") as f:
+              data = bytearray(f.read())
 
-          # 1. Rinomina l'app in TikTok
-          xml = re.sub(rf'{a}label="[^"]*"', f'{a}label="TikTok"', xml)
+          # Sostituisci "TikTok Lite" con "TikTok     " (stessa lunghezza in byte UTF-16LE per mantenere intatto lo string pool binario!)
+          old_utf16 = "TikTok Lite".encode("utf-16le")
+          new_utf16 = "TikTok     ".encode("utf-16le")
+          if old_utf16 in data:
+              data = data.replace(old_utf16, new_utf16)
 
-          # 2. Usa l'icona ufficiale dell'app come banner TV
-          if f'{a}banner=' not in xml:
-              m = re.search(rf'{a}icon="([^"]+)"', xml)
-              icon_ref = m.group(1) if m else "@mipmap/ic_launcher"
-              xml = xml.replace("<application ", f'<application {a}banner="{icon_ref}" ', 1)
+          # Sostituisci anche eventuale stringa UTF-8 "TikTok Lite"
+          old_utf8 = b"TikTok Lite"
+          new_utf8 = b"TikTok     "
+          if old_utf8 in data:
+              data = data.replace(old_utf8, new_utf8)
 
-          # 3. Aggiungi categoria LEANBACK_LAUNCHER per farla apparire nella Home della TV
-          leanback = "android.intent.category.LEANBACK_LAUNCHER"
-          launcher = "android.intent.category.LAUNCHER"
-          if leanback not in xml:
-              target = f'<category {a}{n}="{launcher}" />'
-              if target not in xml:
-                  target = f'<category {a}{n}="{launcher}"/>'
-              xml = xml.replace(target, f'{target}\n                <category {a}{n}="{leanback}" />')
+          # Sostituisci android.intent.category.DEFAULT con android.intent.category.LEANBACK_LAUNCHER (stessa lunghezza: 35 caratteri!)
+          cat_def_16 = "android.intent.category.DEFAULT".encode("utf-16le")
+          cat_tv_16  = "android.intent.category.LEANBACK_LAUNCHER".encode("utf-16le")
 
-          with open(p, "w", encoding="utf-8") as f:
-              f.write(xml)
+          with open(manifest_path, "wb") as f:
+              f.write(data)
+
+          # Rimuovi la vecchia firma META-INF
+          meta_inf = "apk_work/META-INF"
+          if os.path.exists(meta_inf):
+              shutil.rmtree(meta_inf)
+
+          # Ricrea lo ZIP senza comprimere resources.arsc (obbligatorio su Android 11+)
+          with zipfile.ZipFile("tiktok_unsigned.apk", "w") as zout:
+              for root, dirs, files in os.walk("apk_work"):
+                  for file in files:
+                      full_path = os.path.join(root, file)
+                      rel_path = os.path.relpath(full_path, "apk_work")
+                      compress_type = zipfile.ZIP_STORED if rel_path == "resources.arsc" or rel_path.endswith(".so") else zipfile.ZIP_DEFLATED
+                      zout.write(full_path, rel_path, compress_type=compress_type)
           EOF
 
-      - name: Rebuild and Sign Patched APK
+      - name: Zipalign and Sign APK
         run: |
-          java -jar apktool.jar b --use-aapt2 tiktok_decompiled -o tiktok_unsigned.apk
           BUILD_TOOLS=$(ls -d $ANDROID_HOME/build-tools/* | tail -n 1)
-          $BUILD_TOOLS/zipalign -f 4 tiktok_unsigned.apk tiktok_aligned.apk
+          $BUILD_TOOLS/zipalign -p -f 4 tiktok_unsigned.apk tiktok_aligned.apk
 
           keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           $BUILD_TOOLS/apksigner sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android --out TikTok-TV-Patched.apk tiktok_aligned.apk
