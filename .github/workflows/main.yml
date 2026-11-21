@@ -27,7 +27,7 @@ jobs:
 
       - name: Decompile Manifest, Add TV Banner & Rename to TikTok
         run: |
-          java -jar apktool.jar d -s -r --keep-broken-res tiktok_orig.apk -o tiktok_decompiled
+          java -jar apktool.jar d -s -f --keep-broken-res tiktok_orig.apk -o tiktok_decompiled
 
           python3 - << 'EOF'
           import re
@@ -63,7 +63,7 @@ jobs:
 
       - name: Rebuild and Sign Patched APK
         run: |
-          java -jar apktool.jar b tiktok_decompiled -o tiktok_unsigned.apk
+          java -jar apktool.jar b --use-aapt2 tiktok_decompiled -o tiktok_unsigned.apk
           BUILD_TOOLS=$(ls -d $ANDROID_HOME/build-tools/* | tail -n 1)
           $BUILD_TOOLS/zipalign -f 4 tiktok_unsigned.apk tiktok_aligned.apk
 
